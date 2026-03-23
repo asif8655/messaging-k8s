@@ -1,4 +1,4 @@
-﻿import { useCallback, useState } from 'react'
+import { useCallback, useState } from 'react'
 
 import { getApiErrorMessage } from '../api/authApi'
 import { getConversation, markRead } from '../api/messageApi'

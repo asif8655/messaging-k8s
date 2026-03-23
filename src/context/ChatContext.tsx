@@ -1,4 +1,4 @@
-﻿import {
+import {
   createContext,
   startTransition,
   useCallback,
@@ -10,7 +10,7 @@
 } from 'react'
 
 import { getApiErrorMessage } from '../api/authApi'
-import { getConversation } from '../api/messageApi'
+import { getConversation, sendMessageRequest } from '../api/messageApi'
 import { getUsers } from '../api/userApi'
 import { useMessages } from '../hooks/useMessages'
 import { useWebSocket } from '../hooks/useWebSocket'
@@ -94,17 +94,21 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     setUnreadCounts(nextCounts)
   }, [])
 
-  const refreshUsers = useCallback(async () => {
+  const refreshUsers = useCallback(async (isBackground = false) => {
     if (!isAuthenticated) {
       return
     }
 
-    setUsersLoading(true)
-    setUsersError(null)
+    if (!isBackground) {
+      setUsersLoading(true)
+      setUsersError(null)
+    }
 
     try {
       const availableUsers = await getUsers()
-      setUsers(availableUsers)
+      
+      // Only update users if they changed to prevent extra renders
+      setUsers((prev) => JSON.stringify(prev) === JSON.stringify(availableUsers) ? prev : availableUsers)
       void hydrateUnreadCounts(availableUsers)
 
       if (
@@ -115,9 +119,13 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         clearMessages()
       }
     } catch (loadError) {
-      setUsersError(getApiErrorMessage(loadError, 'Unable to load users.'))
+      if (!isBackground) {
+        setUsersError(getApiErrorMessage(loadError, 'Unable to load users.'))
+      }
     } finally {
-      setUsersLoading(false)
+      if (!isBackground) {
+        setUsersLoading(false)
+      }
     }
   }, [clearMessages, hydrateUnreadCounts, isAuthenticated])
 
@@ -172,7 +180,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     [appendMessage, markConversationRead, user],
   )
 
-  const { isConnected, connectionError, send } = useWebSocket({
+  const { isConnected, connectionError } = useWebSocket({
     enabled: isAuthenticated,
     token,
     onMessage: handleIncomingMessage,
@@ -220,26 +228,27 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
       appendMessage(optimisticMessage)
 
-      const payload: ChatPayload = {
-        receiverId: activeUser.id,
-        content: trimmedContent,
-      }
+      try {
+        const payload: ChatPayload = {
+          receiverId: activeUser.id,
+          content: trimmedContent,
+        }
 
-      const sent = send(payload)
-
-      if (!sent) {
+        const savedMessage = await sendMessageRequest(payload)
+        startTransition(() => {
+          appendMessage(savedMessage)
+        })
+      } catch (err) {
         removeMessage(optimisticMessage.id)
-        setMessagesError(connectionError ?? 'Unable to send the message right now.')
+        setMessagesError('Unable to send the message right now.')
+      } finally {
+        setIsSending(false)
       }
-
-      setIsSending(false)
     },
     [
       activeUser,
       appendMessage,
-      connectionError,
       removeMessage,
-      send,
       setMessagesError,
       user,
     ],

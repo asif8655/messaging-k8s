@@ -1,4 +1,4 @@
-﻿import { Client, type IMessage } from '@stomp/stompjs'
+import { Client, type IMessage } from '@stomp/stompjs'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import SockJS from 'sockjs-client'
 
@@ -34,7 +34,7 @@ export const useWebSocket = ({
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },
-      webSocketFactory: () => new SockJS(import.meta.env.VITE_WS_URL),
+      webSocketFactory: () => new SockJS(`${import.meta.env.VITE_WS_URL}?token=${token}`),
       debug: () => undefined,
       onConnect: () => {
         setIsConnected(true)
