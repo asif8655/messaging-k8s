@@ -1,0 +1,66 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: 'Avenir Next', 'Segoe UI', 'Helvetica Neue', sans-serif;
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+  color: #14213d;
+  background-color: #f6f1eb;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(circle at top left, rgba(45, 109, 246, 0.16), transparent 34%),
+    radial-gradient(circle at 88% 10%, rgba(255, 214, 153, 0.24), transparent 24%),
+    linear-gradient(180deg, #f9f5ef 0%, #f2ece4 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+code {
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  padding: 0.15rem 0.5rem;
+  font-size: 0.85em;
+}
+
+.app-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.6) transparent;
+}
+
+.app-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.app-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.55);
+}
+
+.app-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+

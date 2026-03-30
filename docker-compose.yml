@@ -1,0 +1,21 @@
+services:
+  messaging-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: messaging-frontend
+    ports:
+      - "4000:80"
+    networks:
+      - messaging-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+networks:
+  messaging-network:
+    external: true
