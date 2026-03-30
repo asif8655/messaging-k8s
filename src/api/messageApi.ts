@@ -16,3 +16,14 @@ export const markRead = async (userId: string): Promise<void> => {
   await axiosInstance.put(`/messages/${userId}/read`)
 }
 
+export const deleteMessageForMe = async (messageId: string): Promise<void> => {
+  await axiosInstance.delete(`/messages/${messageId}/delete-for-me`)
+}
+
+export const deleteMessageForBoth = async (messageId: string): Promise<void> => {
+  await axiosInstance.delete(`/messages/${messageId}/delete-for-both`)
+}
+
+export const deleteAllMessagesForMe = async (userId: string): Promise<void> => {
+  await axiosInstance.delete(`/messages/${userId}/delete-all-for-me`)
+}

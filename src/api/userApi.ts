@@ -12,3 +12,6 @@ export const getUserById = async (userId: string): Promise<User> => {
   return response.data
 }
 
+export const deleteUser = async (userId: string): Promise<void> => {
+  await axiosInstance.delete(`/users/${userId}`)
+}

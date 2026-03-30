@@ -46,8 +46,8 @@ export const MessageInput = ({
   }
 
   return (
-    <div className="border-t border-slate-200 bg-white/90 p-4 backdrop-blur">
-      <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-3 shadow-sm">
+    <div className="border-t border-slate-200 bg-white/90 p-3 backdrop-blur sm:p-4">
+      <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-3 shadow-sm sm:rounded-[28px]">
         <textarea
           value={value}
           onChange={(event) => setValue(event.target.value)}
@@ -61,8 +61,8 @@ export const MessageInput = ({
           }
           className="max-h-32 min-h-[56px] w-full resize-none bg-transparent px-2 py-1 text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
         />
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-xs text-slate-500">
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs leading-5 text-slate-500">
             {isConnected
               ? 'Press Enter to send. Shift+Enter adds a new line.'
               : 'Waiting for realtime connection...'}
@@ -73,7 +73,7 @@ export const MessageInput = ({
               void handleSend()
             }}
             disabled={!canSend || isSending}
-            className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400 sm:w-auto"
           >
             <SendHorizontal className="h-4 w-4" />
             {isSending ? 'Sending...' : 'Send'}
