@@ -1,9 +1,9 @@
 apiVersion: image.toolkit.fluxcd.io/v1beta2
 kind: ImageRepository
 metadata:
-  name: messaging-backend
+  name: messaging-frontend
 spec:
-  image: ghcr.io/auruscent/messaging-backend
+  image: ghcr.io/auruscent/messaging-frontend
   interval: 5m
   secretRef:
     name: messaging-reg-cred
@@ -12,10 +12,10 @@ spec:
 apiVersion: image.toolkit.fluxcd.io/v1beta2
 kind: ImagePolicy
 metadata:
-  name: messaging-backend
+  name: messaging-frontend
 spec:
   imageRepositoryRef:
-    name: messaging-backend
+    name: messaging-frontend
   filterTags:
     pattern: "^.*-[a-fA-F0-9]+-(?P<ts>.*)"
     extract: "$ts"

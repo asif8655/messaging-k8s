@@ -8,9 +8,9 @@ resources:
 
 images:
   - name: ghcr.io/auruscent/messaging-backend
-    newTag: v0.0.1-snapshot
+    newTag: v0.0.1-snapshot # {"$imagepolicy": "messaging-staging:messaging-backend:tag"}
   - name: ghcr.io/auruscent/messaging-frontend
-    newTag: v0.0.1-snapshot
+    newTag: v0.0.1-snapshot # {"$imagepolicy": "messaging-staging:messaging-frontend:tag"}
 
 patches:
   # Set replicas to 1 for staging
