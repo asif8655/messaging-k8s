@@ -1,0 +1,34 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: messaging
+
+resources:
+  - deployment.yaml
+  - service.yaml
+  - frontend-deployment.yaml
+  - frontend-service.yaml
+  - postgres.yaml
+  - ingress.yaml
+
+configMapGenerator:
+  - name: messaging
+    literals:
+      # Database configuration
+      - DB_HOST=messaging-db-rw
+      - DB_PORT="5432"
+      - DB_NAME=app
+
+      # Spring Boot configuration
+      - SPRING_PROFILES_ACTIVE="k8s"
+      
+      # CORS configuration (override in environments)
+      - APP_CORS_ALLOWED_ORIGINS="https://messaging.yourdomain.com"
+      
+      # Base URL (override in environments)
+      - APP_BASE_URL="https://messaging.yourdomain.com"
+      
+      # JWT configuration
+      - APP_JWT_EXPIRATION_MS="86400000"
+
+      # WebSocket configuration
+      - WEBSOCKET_ALLOWED_ORIGINS="https://messaging.yourdomain.com"

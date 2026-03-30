@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: messaging-backend
+  labels:
+    app: messaging
+    tier: backend
+spec:
+  selector:
+    app: messaging
+    tier: backend
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+      name: http
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+      name: http-healthz

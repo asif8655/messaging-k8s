@@ -1,0 +1,5 @@
+creation_rules:
+  - path_regex: \.yaml$
+    encrypted_regex: ^(data|stringData)$
+    pgp: >-
+      YOUR_PRODUCTION_PGP_KEY_FINGERPRINT_HERE

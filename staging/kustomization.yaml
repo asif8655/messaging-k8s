@@ -1,0 +1,128 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: messaging-staging
+
+resources:
+  - ../base
+  - messaging-secret.yaml
+
+images:
+  - name: ghcr.io/auruscent/messaging-backend
+    newTag: v0.0.1-snapshot
+  - name: ghcr.io/auruscent/messaging-frontend
+    newTag: v0.0.1-snapshot
+
+patches:
+  # Set replicas to 1 for staging
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+    target:
+      kind: Deployment
+      name: messaging-deployment
+
+  # Set resource limits for staging
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: 1Gi
+            cpu: 200m
+          limits:
+            memory: 2Gi
+    target:
+      kind: Deployment
+      name: messaging-deployment
+
+  # Set DB_HOST for staging
+  - patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: DB_HOST
+          value: messaging-db-rw
+    target:
+      kind: Deployment
+      name: messaging-deployment
+
+  # Update heap size memory
+  - patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: JAVA_TOOL_OPTIONS
+          value: "-XX:MaxRAMPercentage=50.0"
+    target:
+      kind: Deployment
+      name: messaging-deployment
+
+  # Update database secret references
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/env/0/valueFrom/secretKeyRef/name
+        value: messaging-db-app
+      - op: replace
+        path: /spec/template/spec/containers/0/env/1/valueFrom/secretKeyRef/name
+        value: messaging-db-app
+    target:
+      kind: Deployment
+      name: messaging-deployment
+
+  # Database configuration for staging (single instance, no backups)
+  - patch: |-
+      - op: replace
+        path: "/spec/enablePDB"
+        value: false
+      - op: replace
+        path: "/spec/instances"
+        value: 1
+      - op: remove
+        path: /spec/plugins
+    target:
+      group: postgresql.cnpg.io
+      version: v1
+      kind: Cluster
+      name: messaging-db
+
+  # Database resources for staging
+  - patch: |-
+      - op: replace
+        path: "/spec/storage/size"
+        value: 10Gi
+    target:
+      kind: Cluster
+      name: messaging-db
+
+  # Delete scheduled backups in staging
+  - patch: |-
+      $patch: delete
+      apiVersion: postgresql.cnpg.io/v1
+      kind: ScheduledBackup
+      metadata:
+        name: messaging-db
+
+  # Staging ingress host
+  - patch: |-
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: messaging-staging.yourdomain.com
+      - op: replace
+        path: /spec/tls/0/secretName
+        value: messaging-staging-tls-cert
+      - op: replace
+        path: /spec/rules/0/host
+        value: messaging-staging.yourdomain.com
+    target:
+      kind: Ingress
+      name: messaging-ingress
+
+# Override ConfigMap values for staging
+configMapGenerator:
+  - name: messaging
+    behavior: merge
+    literals:
+      - APP_CORS_ALLOWED_ORIGINS="https://messaging-staging.yourdomain.com"
+      - APP_BASE_URL="https://messaging-staging.yourdomain.com"
+      - WEBSOCKET_ALLOWED_ORIGINS="https://messaging-staging.yourdomain.com"

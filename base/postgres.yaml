@@ -1,0 +1,55 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: messaging-db
+spec:
+  instances: 2
+
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.5
+
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: postgres-backup
+
+  primaryUpdateStrategy: unsupervised
+
+  affinity:
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname
+    podAntiAffinityType: preferred
+
+  monitoring:
+    enablePodMonitor: true
+
+  storage:
+    size: 10Gi
+    storageClass: managed-csi-premium
+
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: messaging-db
+spec:
+  cluster:
+    name: messaging-db
+  schedule: "0 0 0 * * *"
+  backupOwnerReference: self
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-backup
+type: Opaque
+stringData:
+  # Azure Blob Storage configuration for backups
+  # These should be overridden in environment-specific kustomizations
+  AZURE_STORAGE_ACCOUNT: ""
+  AZURE_STORAGE_KEY: ""
+  AZURE_STORAGE_SAS_TOKEN: ""

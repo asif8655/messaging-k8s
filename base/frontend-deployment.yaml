@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: messaging-frontend
+  labels:
+    app: messaging-frontend
+    tier: frontend
+    app.kubernetes.io/component: web
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: messaging-frontend
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: messaging-frontend
+        tier: frontend
+        app.kubernetes.io/component: web
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/auruscent/messaging-frontend:v0.0.1-snapshot
+          ports:
+            - name: http
+              containerPort: 80
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            failureThreshold: 3
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            failureThreshold: 3
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+      automountServiceAccountToken: false

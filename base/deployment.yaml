@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: messaging-deployment
+  labels:
+    app: messaging
+    tier: backend
+    app.kubernetes.io/component: spring-boot
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: messaging
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: messaging
+        tier: backend
+        app.kubernetes.io/component: spring-boot
+    spec:
+      containers:
+        - name: messaging
+          env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: messaging-db-app
+                  key: username
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: messaging-db-app
+                  key: password
+          envFrom:
+            - configMapRef:
+                name: messaging
+            - secretRef:
+                name: messaging-secret
+          image: ghcr.io/auruscent/messaging-backend:v0.0.1-snapshot # {"$imagepolicy": "messaging:messaging-staging"}
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: http-healthz
+              containerPort: 8000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /actuator/health/liveness
+              port: http-healthz
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /actuator/health/readiness
+              port: http-healthz
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http-healthz
+            failureThreshold: 25
+            periodSeconds: 10
+      securityContext:
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      automountServiceAccountToken: false
