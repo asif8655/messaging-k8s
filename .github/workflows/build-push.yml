@@ -1,105 +1,91 @@
-name: Build and Push Frontend Image
+name: Update Staging Image Tags
 
 on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - main
-      - develop
+  repository_dispatch:
+    types:
+      - deploy-staging
+  workflow_dispatch:
+    inputs:
+      service:
+        description: Service to update
+        required: true
+        type: choice
+        options:
+          - backend
+          - frontend
+      backend_image_tag:
+        description: Backend image tag (required when service=backend)
+        required: false
+        type: string
+      frontend_image_tag:
+        description: Frontend image tag (required when service=frontend)
+        required: false
+        type: string
 
-env:
-  IMAGE_NAME: messaging-frontend
+permissions:
+  contents: write
 
 jobs:
-  quality:
-    name: Lint and Build Frontend
+  update-staging-tags:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run lint
-        run: npm run lint
-
-      - name: Run production build
-        run: npm run build
-
-  build-and-push:
-    name: Build and Push Frontend Image
-    runs-on: ubuntu-latest
-    needs: quality
-    if: github.event_name == 'push'
-    permissions:
-      contents: read
-      id-token: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Log in to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Azure Container Registry
-        run: az acr login --name "${{ vars.ACR_NAME }}"
-
-      - name: Extract metadata
-        id: meta
+      - name: Resolve input payload
+        id: payload
+        shell: bash
         run: |
-          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
-          TIMESTAMP=$(date +%s)
+          SERVICE="${{ github.event.client_payload.service || inputs.service }}"
+          BACKEND_TAG="${{ github.event.client_payload.backend_image_tag || inputs.backend_image_tag }}"
+          FRONTEND_TAG="${{ github.event.client_payload.frontend_image_tag || inputs.frontend_image_tag }}"
 
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            TAG_PREFIX="prod-"
-          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
-            TAG_PREFIX="staging-"
-          else
-            TAG_PREFIX="dev-"
+          if [[ "$SERVICE" != "backend" && "$SERVICE" != "frontend" ]]; then
+            echo "Service must be backend or frontend"
+            exit 1
           fi
 
-          FULL_TAG="${TAG_PREFIX}${SHORT_SHA}-${TIMESTAMP}"
-          echo "full_tag=${FULL_TAG}" >> $GITHUB_OUTPUT
-          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
-          echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
+          if [[ "$SERVICE" == "backend" && -z "$BACKEND_TAG" ]]; then
+            echo "backend_image_tag is required when service=backend"
+            exit 1
+          fi
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: |
-            ${{ vars.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.full_tag }}
-            ${{ vars.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}-latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64
+          if [[ "$SERVICE" == "frontend" && -z "$FRONTEND_TAG" ]]; then
+            echo "frontend_image_tag is required when service=frontend"
+            exit 1
+          fi
 
-      - name: Trigger staging deploy in messaging-k8s
-        if: github.ref == 'refs/heads/develop'
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.K8S_REPO_PAT }}
-          repository: ${{ vars.K8S_REPO }}
-          event-type: deploy-staging
-          client-payload: >-
-            {"service":"frontend","environment":"staging","frontend_image_tag":"${{ steps.meta.outputs.full_tag }}"}
+          echo "service=$SERVICE" >> "$GITHUB_OUTPUT"
+          echo "backend_tag=$BACKEND_TAG" >> "$GITHUB_OUTPUT"
+          echo "frontend_tag=$FRONTEND_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Update staging kustomization
+        shell: bash
+        run: |
+          FILE="staging/kustomization.yaml"
+
+          if [[ "${{ steps.payload.outputs.service }}" == "backend" ]]; then
+            TAG="${{ steps.payload.outputs.backend_tag }}"
+            sed -i -E "/name: ghcr.io\\/auruscent\\/messaging-backend/{n; s/newTag: .*/newTag: ${TAG}/;}" "$FILE"
+          fi
+
+          if [[ "${{ steps.payload.outputs.service }}" == "frontend" ]]; then
+            TAG="${{ steps.payload.outputs.frontend_tag }}"
+            sed -i -E "/name: ghcr.io\\/auruscent\\/messaging-frontend/{n; s/newTag: .*/newTag: ${TAG}/;}" "$FILE"
+          fi
+
+      - name: Commit and push changes
+        shell: bash
+        run: |
+          if git diff --quiet -- staging/kustomization.yaml; then
+            echo "No changes in staging image tags"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add staging/kustomization.yaml
+          git commit -m "ci: update staging image tag for ${{ steps.payload.outputs.service }}"
+          git push

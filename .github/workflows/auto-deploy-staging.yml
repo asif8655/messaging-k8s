@@ -1,0 +1,50 @@
+name: Auto Deploy Staging on Manifest Update
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - staging/kustomization.yaml
+      - base/**
+      - staging/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    env:
+      NAMESPACE: messaging-staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set AKS context
+        uses: azure/aks-set-context@v4
+        with:
+          resource-group: ${{ vars.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ vars.AKS_CLUSTER_NAME }}
+
+      - name: Ensure namespace exists
+        run: |
+          kubectl create namespace "${{ env.NAMESPACE }}" --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy staging overlay
+        run: kubectl apply -k staging
+
+      - name: Wait for rollouts
+        run: |
+          kubectl rollout status deployment/messaging-deployment -n "${{ env.NAMESPACE }}" --timeout=300s
+          kubectl rollout status deployment/messaging-frontend -n "${{ env.NAMESPACE }}" --timeout=300s
