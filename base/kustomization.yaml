@@ -3,12 +3,9 @@ kind: Kustomization
 namespace: messaging
 
 resources:
-  - deployment.yaml
-  - service.yaml
-  - frontend-deployment.yaml
-  - frontend-service.yaml
-  - postgres.yaml
-  - ingress.yaml
+  - backend
+  - frontend
+  - db
 
 configMapGenerator:
   - name: messaging
